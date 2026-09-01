@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="語音翻譯">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="format-detection" content="telephone=no">
+  <title>語音翻譯 — Voice Translate</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  <div class="app-layout">
+    <div class="container">
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+        <h1>語音翻譯</h1>
+      </div>
+      <p class="subtitle">說出你想翻譯的內容，即時轉換成目標語言</p>
+    </header>
+
+    <main class="main-card">
+      <div class="lang-bar">
+        <div class="lang-select-group">
+          <label for="source-lang">來源語言</label>
+          <select id="source-lang"></select>
+        </div>
+        <button type="button" id="swap-langs" class="swap-btn" title="交換語言">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 16V4M7 4L3 8M7 4l4 4"/>
+            <path d="M17 8v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+        </button>
+        <div class="lang-select-group">
+          <label for="target-lang">目標語言</label>
+          <select id="target-lang"></select>
+        </div>
+      </div>
+
+      <div class="text-panels">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-label">原文</span>
+            <button type="button" class="icon-btn" id="copy-source" title="複製原文">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+          <div class="panel-body" id="source-text">
+            <span class="placeholder">點擊麥克風開始說話…</span>
+          </div>
+        </div>
+
+        <div class="panel panel-translated">
+          <div class="panel-header">
+            <span class="panel-label">譯文</span>
+            <div class="panel-actions">
+              <button type="button" class="icon-btn" id="speak-target" title="朗讀譯文">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                </svg>
+              </button>
+              <button type="button" class="icon-btn" id="copy-target" title="複製譯文">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="panel-body" id="target-text">
+            <span class="placeholder">翻譯結果將顯示於此</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mic-section">
+        <button type="button" id="mic-btn" class="mic-btn" aria-label="開始語音輸入">
+          <span class="mic-pulse"></span>
+          <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <p class="mic-hint" id="mic-hint">點擊開始錄音</p>
+      </div>
+
+      <div class="options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="continuous-mode">
+          <span>連續聆聽模式</span>
+        </label>
+        <span class="option-hint">錄音結束後將自動翻譯並播放譯文</span>
+      </div>
+    </main>
+
+    <div class="status-bar" id="status-bar">
+      <span id="status-text">就緒</span>
+    </div>
+
+    <footer class="footer">
+      <p id="footer-hint">使用瀏覽器語音辨識與 MyMemory 翻譯服務</p>
+    </footer>
+    </div>
+
+    <aside class="history-panel">
+      <div class="history-header">
+        <h2>翻譯記錄</h2>
+        <button type="button" id="clear-history" class="clear-btn" title="清除全部記錄">清除全部</button>
+      </div>
+      <div class="history-columns">
+        <div class="history-column">
+          <div class="history-column-header">
+            <h3>原文記錄</h3>
+            <div class="history-column-actions">
+              <button type="button" id="copy-source-history" class="clear-btn clear-btn-sm" title="複製全部原文">複製</button>
+              <button type="button" id="clear-source-history" class="clear-btn clear-btn-sm" title="清除原文記錄">清除</button>
+            </div>
+          </div>
+          <div class="history-content source-content" id="source-history-content">
+            <p class="history-placeholder" id="source-history-empty">尚無原文記錄</p>
+          </div>
+        </div>
+        <div class="history-column">
+          <div class="history-column-header">
+            <h3>譯文記錄</h3>
+            <div class="history-column-actions">
+              <button type="button" id="copy-target-history" class="clear-btn clear-btn-sm" title="複製全部譯文">複製</button>
+              <button type="button" id="speak-target-history" class="clear-btn clear-btn-sm" title="播放全部譯文">播放</button>
+              <button type="button" id="clear-target-history" class="clear-btn clear-btn-sm" title="清除譯文記錄">清除</button>
+            </div>
+          </div>
+          <div class="history-content target-content" id="target-history-content">
+            <p class="history-placeholder" id="target-history-empty">尚無譯文記錄</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
