@@ -33,6 +33,7 @@ const els = {
   toast: document.getElementById('toast'),
   footerHint: document.getElementById('footer-hint'),
   clearHistory: document.getElementById('clear-history'),
+  saveHistory: document.getElementById('save-history'),
   sourceHistoryContent: document.getElementById('source-history-content'),
   targetHistoryContent: document.getElementById('target-history-content'),
   sourceHistoryEmpty: document.getElementById('source-history-empty'),
@@ -154,6 +155,7 @@ function bindEvents() {
   els.sourceLang.addEventListener('change', onLanguageChange);
   els.targetLang.addEventListener('change', onLanguageChange);
   els.clearHistory.addEventListener('click', clearAllHistory);
+  els.saveHistory.addEventListener('click', saveHistoryToFile);
   els.clearSourceHistory.addEventListener('click', () => clearHistory('source'));
   els.clearTargetHistory.addEventListener('click', () => clearHistory('target'));
   els.copySourceHistory.addEventListener('click', () => copyText(getCombinedText(sourceRecords), '全部原文已複製'));
@@ -805,6 +807,54 @@ function addHistoryRecord(source, target) {
 
 function getCombinedText(records) {
   return records.map((r) => r.text).join('\n\n');
+}
+
+function buildHistoryExportText() {
+  const count = Math.max(sourceRecords.length, targetRecords.length);
+  if (count === 0) return '';
+
+  const sources = [...sourceRecords].reverse();
+  const targets = [...targetRecords].reverse();
+  const lines = ['語音翻譯記錄', `匯出時間：${formatTime(Date.now())}`, ''];
+
+  for (let i = 0; i < count; i++) {
+    const source = sources[i];
+    const target = targets[i];
+    const sourceLang = getLang(source?.lang)?.label || '';
+    const targetLang = getLang(target?.lang)?.label || '';
+    const time = formatTime(source?.timestamp || target?.timestamp || Date.now());
+
+    lines.push(`── ${i + 1}. ${time} ──`);
+    if (source) lines.push(`原文（${sourceLang}）：${source.text}`);
+    if (target) lines.push(`譯文（${targetLang}）：${target.text}`);
+    lines.push('');
+  }
+
+  return lines.join('\n').trim() + '\n';
+}
+
+function saveHistoryToFile() {
+  const content = buildHistoryExportText();
+  if (!content) {
+    showToast('尚無記錄可存檔');
+    return;
+  }
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const filename = `翻譯記錄_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.txt`;
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('翻譯記錄已存檔');
 }
 
 function renderHistoryArea(records, contentEl, emptyEl, type) {
