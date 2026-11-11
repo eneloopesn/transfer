@@ -65,6 +65,7 @@ let micStream = null;
 let silenceCheckFrame = null;
 let silenceStartTime = null;
 let hasDetectedSpeech = false;
+let hasRecognizedSpeech = false;
 let isArmed = false;
 let isSpeaking = false;
 let soundHoldStartTime = null;
@@ -85,6 +86,11 @@ function init() {
   loadVoices();
   loadHistory();
   renderHistory();
+
+  // 頁面載入後自動進入待機，聽到聲音就錄音（首次可能需允許麥克風權限）
+  if (SpeechRecognition && !els.micBtn.disabled) {
+    armStandby();
+  }
 }
 
 function setupMobileHints() {
@@ -224,10 +230,10 @@ async function armStandby() {
   if (!ok) {
     isArmed = false;
     els.micBtn.classList.remove('recording');
-    els.micHint.textContent = '點擊開始，聽到聲音會自動錄音';
+    els.micHint.textContent = '點擊麥克風開啟自動錄音';
     els.micHint.classList.remove('active');
-    setStatus('無法啟用麥克風，請允許權限', 'error');
-    showToast('無法啟用麥克風');
+    setStatus('無法啟用麥克風，請允許權限後再點一次', 'error');
+    showToast('無法啟用麥克風，請允許權限');
     return;
   }
 
@@ -240,6 +246,7 @@ function enterStandby() {
 
   isListening = false;
   hasDetectedSpeech = false;
+  hasRecognizedSpeech = false;
   silenceStartTime = null;
   soundHoldStartTime = null;
 
@@ -262,7 +269,8 @@ function startListening() {
   finalTranscript = '';
   latestTranscript = '';
   shouldTranslateOnStop = true;
-  hasDetectedSpeech = true;
+  hasDetectedSpeech = false;
+  hasRecognizedSpeech = false;
   silenceStartTime = null;
   soundHoldStartTime = null;
   setPanelText(els.sourceText, '');
@@ -300,6 +308,7 @@ function startListening() {
     latestTranscript = allText;
     if (allText.trim()) {
       hasDetectedSpeech = true;
+      hasRecognizedSpeech = true;
       silenceStartTime = null;
     }
 
@@ -343,14 +352,15 @@ function startListening() {
   recognition.onend = () => {
     if (!isListening) return;
 
-    if (els.continuousMode.checked) {
+    if (els.continuousMode.checked && hasRecognizedSpeech) {
       try {
         recognition.start();
       } catch {
-        stopListening(true);
+        stopListening(hasRecognizedSpeech);
       }
     } else {
-      stopListening(true);
+      // 沒辨識到語音就不翻譯，直接回待機
+      stopListening(hasRecognizedSpeech);
     }
   };
 
@@ -382,6 +392,7 @@ function getMicVolume() {
 
 function resetVolumeState() {
   hasDetectedSpeech = false;
+  hasRecognizedSpeech = false;
   silenceStartTime = null;
   soundHoldStartTime = null;
 }
@@ -417,11 +428,20 @@ function checkVolume() {
     if (hasSound) {
       hasDetectedSpeech = true;
       silenceStartTime = null;
-    } else if (hasDetectedSpeech) {
+    } else if (hasRecognizedSpeech) {
+      // 有實際辨識到語音後才在靜音時翻譯
       if (!silenceStartTime) {
         silenceStartTime = Date.now();
       } else if (Date.now() - silenceStartTime >= SILENCE_DURATION_MS) {
         stopListening(true);
+        return;
+      }
+    } else if (hasDetectedSpeech) {
+      // 只有雜音、沒辨識到內容 → 回待機，不翻譯
+      if (!silenceStartTime) {
+        silenceStartTime = Date.now();
+      } else if (Date.now() - silenceStartTime >= SILENCE_DURATION_MS) {
+        stopListening(false);
         return;
       }
     }
@@ -476,6 +496,7 @@ function stopVolumeMonitor(releaseHardware = true) {
   silenceStartTime = null;
   soundHoldStartTime = null;
   hasDetectedSpeech = false;
+  hasRecognizedSpeech = false;
 
   if (!releaseHardware) return;
 
@@ -493,7 +514,8 @@ function stopVolumeMonitor(releaseHardware = true) {
 }
 
 function getRecordedText() {
-  return (latestTranscript || finalTranscript || getSourceContent()).trim();
+  // 只用本次辨識結果，避免待機／無語音時誤拿畫面佔位文字去翻譯
+  return (latestTranscript || finalTranscript).trim();
 }
 
 function stopListening(shouldTranslate, options = {}) {
@@ -519,14 +541,20 @@ function stopListening(shouldTranslate, options = {}) {
   }
 
   const text = getRecordedText();
-  const doTranslate = shouldTranslate && shouldTranslateOnStop && wasListening && text;
+  const doTranslate =
+    shouldTranslate &&
+    shouldTranslateOnStop &&
+    wasListening &&
+    hasRecognizedSpeech &&
+    Boolean(text);
   shouldTranslateOnStop = false;
+  hasRecognizedSpeech = false;
 
   if (!keepArmed) {
     isArmed = false;
     stopVolumeMonitor(true);
     els.micBtn.classList.remove('recording');
-    els.micHint.textContent = '點擊開始，聽到聲音會自動錄音';
+    els.micHint.textContent = '點擊麥克風開啟自動錄音';
     els.micHint.classList.remove('active');
   } else {
     stopVolumeMonitor(releaseMonitor);
@@ -682,7 +710,7 @@ function speakText(text, langCode) {
 function setPanelText(el, text) {
   if (!text) {
     const isSource = el === els.sourceText;
-    el.innerHTML = `<span class="placeholder">${isSource ? '點擊麥克風後，聽到聲音會自動錄音…' : '翻譯結果將顯示於此'}</span>`;
+    el.innerHTML = `<span class="placeholder">${isSource ? '直接說話即可自動錄音…' : '翻譯結果將顯示於此'}</span>`;
   } else if (text.includes('<')) {
     el.innerHTML = text;
   } else {
